@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Share & Viewer</title>
+    <!-- Marked.js (Markdown用) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- PeerJS (通信用) -->
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <style>
+        :root {
+            --bg-main: #fcfcfc;
+            --bg-card: #ffffff;
+            --text-main: #111111;
+            --text-sub: #666666;
+            --border-color: #e0e0e0;
+            --accent-color: #0066cc;
+            --accent-hover: #004499;
+            --active-bg: #f0f0f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav {
+            display: flex;
+            max-width: 1200px;
+            margin: 0 auto;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            flex: 1;
+            min-width: 100px;
+            padding: 15px 10px;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-sub);
+            cursor: pointer;
+            text-align: center;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+            background-color: rgba(0,0,0,0.02);
+        }
+
+        .tab-btn.active {
+            color: var(--accent-color);
+            border-bottom-2px: 2px solid var(--accent-color);
+            font-weight: 600;
+        }
+
+        main {
+            flex: 1;
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-main);
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-sub);
+            margin-bottom: 5px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+            background-color: #fafafa;
+            color: var(--text-main);
+            transition: border 0.2s;
+        }
+
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            background-color: #ffffff;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--bg-card);
+            color: var(--text-main);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn:hover {
+            background-color: var(--active-bg);
+        }
+
+        .btn-primary {
+            background-color: var(--accent-color);
+            color: #ffffff;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            padding: 30px;
+            text-align: center;
+            background-color: #fafafa;
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--text-sub);
+            font-size: 14px;
+            margin-bottom: 15px;
+            transition: background 0.2s;
+        }
+
+        .drop-zone.dragover {
+            background-color: #f0f7ff;
+            border-color: var(--accent-color);
+        }
+
+        textarea.editor {
+            height: 300px;
+            font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        .viewer-render {
+            background-color: var(--bg-card);
+            min-height: 200px;
+        }
+
+        .viewer-render h1, .viewer-render h2, .viewer-render h3 {
+            margin-top: 15px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        .viewer-render h1 { font-size: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
+        .viewer-render h2 { font-size: 20px; }
+        .viewer-render p { margin-bottom: 10px; }
+        .viewer-render code { background-color: #f5f5f5; padding: 2px 4px; border-radius: 3px; font-size: 85%; font-family: monospace; }
+        .viewer-render pre { background-color: #f5f5f5; padding: 15px; border-radius: 4px; overflow-x: auto; margin-bottom: 15px; }
+        .viewer-render pre code { background-color: transparent; padding: 0; font-size: 100%; }
+
+        .file-meta {
+            font-size: 13px;
+            color: var(--text-sub);
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .code-output {
+            background-color: #f8f9fa;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 15px;
+            font-family: SFMono-Regular, Consolas, monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            white-space: pre;
+            max-height: 400px;
+        }
+
+        .status-text {
+            font-size: 13px;
+            color: var(--text-sub);
+        }
+        
+    </style>
+</head>
+<body>
+
+    <header>
+        <nav>
+            <button class="tab-btn active" onclick="switchTab('home')">ホーム</button>
+            <button class="tab-btn" onclick="switchTab('viewer')">ビュワー</button>
+            <button class="tab-btn" onclick="switchTab('fileshare')">ファイル共有</button>
+            <button class="tab-btn" onclick="switchTab('settings')">同期ID・設定</button>
+            <button class="tab-btn" onclick="switchTab('developer')">開発者情報</button>
+
+        </nav>
+    </header>
+
+    <main>
+        <!-- ホームメニュー -->
+        <div id="home" class="tab-content active">
+            <div class="card">
+                <h2>ファイル同期・共有システム</h2>
+                <p style="margin-bottom: 15px;">PC側からファイルをドロップ、またはテキスト入力をすることで、接続されたスマートフォンなどの別端末へリアルタイムにデータを転送します。</p>
+                <div class="file-meta" id="connection-summary">現在の状態: 未接続</div>
+            </div>
+            
+            <div class="grid-2">
+                <div class="card">
+                    <h3>PC側（送信）操作スペース</h3>
+                    <p style="font-size:13px; color:var(--text-sub); margin-bottom:15px;">ここにファイルをドロップするか直接入力してください。</p>
+                    <div class="drop-zone" id="drop-zone">ファイルをドロップ</div>
+                    <textarea id="main-editor" class="editor" placeholder="ここに直接、コードや文章を入力することも可能です。"></textarea>
+                </div>
+                <div class="card">
+                    <h3>システム概要</h3>
+                    <p style="font-size:14px; margin-bottom: 10px;">拡張子に基づき自動で処理が切り替わります：</p>
+                    <ul style="margin-left: 20px; font-size: 13px; color: var(--text-sub);">
+                        <li><b>.md ファイル</b>「ビュワー」タブに整形されて反映されます。</li>
+                        <li><b>その他のファイル (.py, .html など)</b>「ファイル共有」タブにコードが転送され、コピーやダウンロードが可能になります。</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- ビュワーメニュー -->
+        <div id="viewer" class="tab-content">
+            <div class="card">
+                <h2>同期ビュワー</h2>
+                <div class="file-meta" id="viewer-filename">表示中のファイル: なし</div>
+                <div id="viewer-render" class="viewer-render">
+                    <p style="color: var(--text-sub);">マークダウンファイル(.md)が送信されると、ここにプレビューが表示されます。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ファイル共有メニュー -->
+        <div id="fileshare" class="tab-content">
+            <div class="card">
+                <h2>ファイル共有・コード操作</h2>
+                <div class="file-meta" id="share-filename">ファイル名: なし</div>
+                <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+                    <button class="btn" onclick="copyCode()">コピー</button>
+                    <button class="btn btn-primary" onclick="downloadFile()">ダウンロード</button>
+                </div>
+                <div id="code-output" class="code-output">ファイルが共有されていません。</div>
+            </div>
+        </div>
+
+        <!-- 同期ID&設定メニュー -->
+        <div id="settings" class="tab-content">
+            <div class="card">
+                <h2>同期ID・通信設定</h2>
+                <div class="form-group">
+                    <label>あなたの接続用ID</label>
+                    <div class="input-group">
+                        <input type="text" id="my-id" readonly value="ID取得中...">
+                        <button class="btn" onclick="copyMyId()">コピー</button>
+                    </div>
+                </div>
+                <hr style="border:0; border-top:1px solid var(--border-color); margin:20px 0;">
+                <div class="form-group">
+                    <label>接続先端末(相手)のIDを入力</label>
+                    <div class="input-group">
+                        <input type="text" id="peer-id-input" placeholder="相手のIDを入力してください">
+                        <button class="btn btn-primary" id="connect-btn">接続</button>
+                    </div>
+                </div>
+                <div class="status-text" id="conn-status">ステータス: 未接続</div>
+            </div>
+        </div>
+        
+        <!-- 情報メニュー -->
+        <div id="developer" class="tab-content">
+            <div class="card">
+                <h2>開発者情報</h2>
+                <p style="font-size:13px; color:var(--text-sub); margin-bottom:15px;">
+                    実機連携のテスト用として、ローカル環境で擬似的にデータを入力・受信させることができます。<br><br>
+                    サンプルファイルを<b><font color="#87CEEB">ダウンロード！</font></b>
+                </p>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                 <button class="btn" onclick="downloadSampleFile('sample.md')">sample .md</button>
+                 <button class="btn" onclick="downloadSampleFile('sample.py')">sample .py</button>
+                                                                                                   <!-- ↑指定するファイル名 -->
+                </div>
+            </div>
+
+            <div class="card">
+                <!-- <h2>SDC</h2>
+                <ul style="margin-left: 20px; font-size: 14px; color: var(--text-main); margin-bottom: 25px; line-height: 1.8;">
+                  <li>team: <b>sk</b></li><br>
+                  <b>学生です。</b><font color="#808080">^^;</font>
+                </ul> -->
+                
+                <!-- SNS(中央揃え) -->
+                <div style="display: flex; justify-content: center; gap: 20px; align-items: center; padding: 10px 0;">
+                   <a href="https://github.com/skuro709" target="_blank" rel="noopener noreferrer" style="transition: opacity 0.2s;">
+                        <img src="assist/icon/github.png" alt="GitHub" style="width: 32px; height: 32px; display: block; object-fit: contain;">
+                    </a>
+                   <a href="https://discord.gg/gbz4bQp2xM" target="_blank" rel="noopener noreferrer" style="transition: opacity 0.2s;">
+                        <img src="assist/icon/discord.png" alt="Discord" style="width: 32px; height: 32px; display: block; object-fit: contain;">
+                    </a>
+                    <a href="https://discord.com/oauth2/authorize?client_id=1473754857054929149" target="_blank" rel="noopener noreferrer" style="transition: opacity 0.2s;">
+                        <img src="assist/icon/bot.png" alt="Discord" style="width: 32px; height: 32px; display: block; object-fit: contain;">
+                    </a>                
+               </div>
+            </div>
+        </div>        
+        
+    </main>
+
+    <script>
+        // タブ切り替え制御
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(tabId).classList.add('active');
+            
+            // 各種ボタンの視覚的アクティブ化
+            const event = window.event;
+            if(event) {
+                event.target.classList.add('active');
+            } else {
+                // 初期ロード時
+                const tabs = document.querySelectorAll('.tab-btn');
+                tabs.forEach(t => {
+                    if(t.getAttribute('onclick').includes(tabId)) t.classList.add('active');
+                });
+            }
+        }
+
+        // グローバルデータ管理オブジェクト
+        let currentFileData = {
+            name: 'untitled.txt',
+            content: ''
+        };
+
+        // PeerJS 通信設定
+        const peer = new Peer();
+        let conn = null;
+
+        peer.on('open', (id) => {
+            document.getElementById('my-id').value = id;
+        });
+
+        // 接続を受ける（スマホ側を想定）
+        peer.on('connection', (connection) => {
+            conn = connection;
+            setupConnection();
+        });
+
+        // 接続を試みる（PC側を想定）
+        document.getElementById('connect-btn').addEventListener('click', () => {
+            const targetId = document.getElementById('peer-id-input').value.trim();
+            if (targetId) {
+                conn = peer.connect(targetId);
+                setupConnection();
+            }
+        });
+
+        function setupConnection() {
+            const statusEl = document.getElementById('conn-status');
+            const summaryEl = document.getElementById('connection-summary');
+            statusEl.textContent = "ステータス: 接続完了";
+            statusEl.style.color = "var(--accent-color)";
+            summaryEl.textContent = "現在の状態: 端末と接続中";
+
+            // データ受信時
+            conn.on('data', (data) => {
+                if (data && data.type === 'fileSync') {
+                    handleIncomingData(data.filename, data.content);
+                }
+            });
+
+            conn.on('close', () => {
+                statusEl.textContent = "ステータス: 切断されました";
+                statusEl.style.color = "var(--text-sub)";
+                summaryEl.textContent = "現在の状態: 未接続";
+            });
+        }
+
+        // データの仕分けと画面反映
+        function handleIncomingData(filename, content) {
+            currentFileData.name = filename;
+            currentFileData.content = content;
+
+            const ext = filename.split('.').pop().toLowerCase();
+
+            if (ext === 'md') {
+                // ビュワーへ反映
+                document.getElementById('viewer-filename').textContent = `表示中のファイル: ${filename}`;
+                document.getElementById('viewer-render').innerHTML = marked.parse(content);
+                switchTab('viewer');
+            } else {
+                // ファイル共有&反映
+                document.getElementById('share-filename').textContent = `ファイル名: ${filename}`;
+                const outputEl = document.getElementById('code-output');
+                outputEl.textContent = content;
+                switchTab('fileshare');
+            }
+        }
+
+        // 送信側 データを接続先へ送信する処理
+        function sendData(filename, content) {
+            if (conn && conn.open) {
+                conn.send({
+                    type: 'fileSync',
+                    filename: filename,
+                    content: content
+                });
+            }
+        }
+
+        // PC側 エディタの入力監視(リアルタイム同期用)
+        document.getElementById('main-editor').addEventListener('input', (e) => {
+            const text = e.target.value;
+            handleIncomingData('note.txt', text);
+            sendData('note.txt', text);
+        });
+
+        // PC側 ドラッグ＆ドロップ処理
+        const dropZone = document.getElementById('drop-zone');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const content = event.target.result;
+                    document.getElementById('main-editor').value = content;
+                    
+                    handleIncomingData(file.name, content);
+                    sendData(file.name, content);
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // スマホ側 コードのコピー機能
+        function copyCode() {
+            if (!currentFileData.content) return;
+            navigator.clipboard.writeText(currentFileData.content).then(() => {
+                alert('コードをクリップボードにコピーしました。');
+            }).catch(err => {
+                alert('コピーに失敗しました: ' + err);
+            });
+        }
+
+        // スマホ側 ファイルのダウンロード機能
+        function downloadFile() {
+            if (!currentFileData.content) return;
+            const blob = new Blob([currentFileData.content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentFileData.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // IDのコピー機能
+        function copyMyId() {
+            const myIdInput = document.getElementById('my-id');
+            navigator.clipboard.writeText(myIdInput.value).then(() => {
+                alert('自分のIDをコピーしました。');
+            });
+        }
+        
+        // Dev 指定ファイルをサーバーからダウンロード
+        function downloadSampleFile(filename) {
+            const filePath = `assist/file/${filename}`;
+
+            fetch(filePath)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('ファイルが見つかりません: ' + filePath);
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename; // ダウンロード時のファイル名
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                })
+                .catch(err => {
+                    alert('ダウンロードエラー: ' + err.message);
+                });
+        }
+    </script>
+</body>
+</html>
