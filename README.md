@@ -5,4 +5,4 @@
 
 # tja
 [太鼓の達人の譜面編集](https://skuro709.github.io/tja/editor)<br><br>
-[音楽ファイルから譜面を自動生成](https://skuro709.github.io/tja/gen)
+[音楽ファイルから譜面を自動生成](https://takeda-lab.jp/tjagen/)
