@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TJA Editor team: sk</title>
+
+<style>
+    *{
+        margin:0;
+        padding:0;
+        box-sizing:border-box;
+        font-family: "SF Pro Display", "-apple-system", "Segoe UI", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+    }
+
+    body{
+        background:#f8fafc;
+        color:#1e293b;
+        height:100vh;
+        display:flex;
+        flex-direction:column;
+        overflow: hidden;
+    }
+
+    header{
+        height:64px;
+        background:white;
+        border-bottom:1px solid #e2e8f0;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        padding:0 24px;
+        box-shadow:0 1px 3px rgba(0,0,0,0.02);
+        z-index: 10;
+    }
+
+    header h1{
+        font-size:20px;
+        font-weight:700;
+        color:#0f172a;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .toolbar{
+        display:flex;
+        gap:8px;
+        flex-wrap:wrap;
+    }
+
+    button{
+        border:none;
+        background:white;
+        border:1px solid #cbd5e1;
+        padding:9px 16px;
+        border-radius:10px;
+        cursor:pointer;
+        transition: all .2s ease;
+        font-weight:600;
+        font-size:14px;
+        color: #475569;
+    }
+
+    button:hover{
+        background:#0f172a;
+        border-color: #0f172a;
+        color:white;
+    }
+
+    .container{
+        flex:1;
+        display:flex;
+        overflow:hidden;
+        position: relative;
+    }
+
+    .sidebar{
+        width:290px;
+        background:white;
+        border-right:1px solid #e2e8f0;
+        padding:24px;
+        overflow:auto;
+    }
+
+    .sidebar h2{
+        margin-bottom:20px;
+        font-size:16px;
+        font-weight: 700;
+        color: #475569;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .info-box{
+        background:#f8fafc;
+        border:1px solid #e2e8f0;
+        border-radius:12px;
+        padding:14px;
+        margin-bottom:14px;
+    }
+
+    .info-box label{
+        display:block;
+        margin-bottom:6px;
+        font-size:13px;
+        font-weight:700;
+        color: #64748b;
+    }
+
+    input, select{
+        width:100%;
+        padding:9px 12px;
+        border-radius:8px;
+        border:1px solid #cbd5e1;
+        background:white;
+        font-size: 14px;
+        color: #0f172a;
+        outline: none;
+        transition: border-color .2s;
+    }
+
+    input:focus, select:focus {
+        border-color: #64748b;
+    }
+
+    #measureCount, #noteCount {
+        font-size: 18px;
+        font-weight: 700;
+        color: #0f172a;
+        padding-top: 2px;
+    }
+
+    .editor-area{
+        flex:1;
+        display:flex;
+        flex-direction:column;
+        background: white;
+    }
+
+    .top-tabs{
+        background:#f8fafc;
+        padding:10px 16px;
+        border-bottom:1px solid #e2e8f0;
+        display:flex;
+        gap:8px;
+    }
+
+    .tab{
+        padding:8px 16px;
+        border-radius:8px;
+        background:transparent;
+        cursor:pointer;
+        font-weight:600;
+        font-size: 14px;
+        color: #64748b;
+        transition: all .2s;
+    }
+
+    .tab:hover {
+        background: #e2e8f0;
+        color: #0f172a;
+    }
+
+    .tab.active{
+        background:#0f172a;
+        color:white;
+    }
+
+    .main-editor{
+        flex:1;
+        display:flex;
+        overflow:hidden;
+    }
+
+    .tab-content {
+        flex: 1;
+        display: flex;
+        overflow: hidden;
+    }
+
+    textarea{
+        flex:1;
+        border:none;
+        resize:none;
+        padding:24px;
+        font-size:16px;
+        line-height:1.7;
+        background:#ffffff;
+        outline:none;
+        font-family: "SF Mono", Monaco, Consolas, Courier, monospace;
+        color: #334155;
+    }
+
+    .preview{
+        width:380px;
+        background:#f8fafc;
+        border-left:1px solid #e2e8f0;
+        padding:24px;
+        overflow-y:auto;
+    }
+
+    .preview h3{
+        margin-bottom:16px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .preview-scroll {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .measure-row {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 12px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.01);
+    }
+
+    .measure-num {
+        font-size: 11px;
+        font-weight: 600;
+        color: #94a3b8;
+        margin-bottom: 6px;
+    }
+
+    .note-line{
+        height:28px;
+        border-radius:6px;
+        background:#f1f5f9;
+        border: 1px solid #e2e8f0;
+        position:relative;
+        overflow:hidden;
+        display: flex;
+        align-items: center;
+    }
+
+    .note{
+        position:absolute;
+        top:50%;
+        transform: translateY(-50%);
+        width:18px;
+        height:18px;
+        border-radius:50%;
+        box-shadow: inset -2px -2px 0px rgba(0,0,0,0.15);
+    }
+
+    .note.red { background:#ef4444; }
+    .note.blue { background:#3b82f6; }
+    .note.red-large { background:#ef4444; width: 22px; height: 22px; }
+    .note.blue-large { background:#3b82f6; width: 22px; height: 22px; }
+    .note.yellow { background:#facc15; border-radius: 6px; width: 26px; } 
+
+    .help-area {
+        flex: 1;
+        padding: 32px;
+        overflow-y: auto;
+        background: #ffffff;
+    }
+
+    .help-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .help-container h2 {
+        font-size: 24px;
+        color: #0f172a;
+        margin-bottom: 24px;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 10px;
+    }
+
+    .help-section {
+        margin-bottom: 32px;
+    }
+
+    .help-section h3 {
+        font-size: 18px;
+        color: #1e293b;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .help-section p {
+        font-size: 15px;
+        line-height: 1.6;
+        color: #475569;
+        margin-bottom: 12px;
+    }
+
+    .help-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+    }
+
+    .help-table th, .help-table td {
+        border: 1px solid #e2e8f0;
+        padding: 10px 14px;
+        text-align: left;
+        font-size: 14px;
+    }
+
+    .help-table th {
+        background: #f8fafc;
+        color: #334155;
+        font-weight: 600;
+    }
+
+    .statusbar{
+        height:42px;
+        background:white;
+        border-top:1px solid #e2e8f0;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        padding:0 24px;
+        font-size:13px;
+        color: #64748b;
+        z-index: 10;
+    }
+
+    .status-left {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+    }
+
+    .credit {
+        font-size: 12px;
+        color: #94a3b8;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+    }
+
+    .badge{
+        background:#f1f5f9;
+        color:#475569;
+        padding:4px 10px;
+        border-radius:999px;
+        font-size:11px;
+        font-weight:600;
+    }
+
+    .floating-tools{
+        position:absolute;
+        right:24px;
+        bottom:64px;
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+        z-index: 20;
+        transition: all 0.3s ease;
+    }
+
+    .floating-tools-inner {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        transition: max-height 0.3s ease, opacity 0.2s ease;
+        max-height: 300px;
+        opacity: 1;
+        overflow: hidden;
+    }
+
+    .floating-tools.collapsed .floating-tools-inner {
+        max-height: 0;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .floating-tools button{
+        width:48px;
+        height:48px;
+        border-radius:14px;
+        font-size:18px;
+        background: white;
+        border: 1px solid #e2e8f0;
+        box-shadow:0 4px 12px rgba(15,23,42,0.06);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+    }
+
+    .floating-tools button:hover {
+        transform: translateY(-2px);
+        box-shadow:0 6px 16px rgba(15,23,42,0.1);
+        background: #f8fafc;
+    }
+
+    .floating-tools .toggle-btn {
+        background: #0f172a;
+        color: white;
+        border-color: #0f172a;
+    }
+    .floating-tools .toggle-btn:hover {
+        background: #1e293b;
+    }
+
+    @media(max-width:1024px){
+        .preview{
+            display:none;
+        }
+        .sidebar{
+            display:none;
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>🥁 TJA Editor</h1>
+
+    <div class="toolbar">
+        <button onclick="newFile()">新規作成</button>
+        <button onclick="openFile()">ファイル選択</button>
+        <button onclick="saveFile()">保存</button>
+        <button onclick="insertTemplate()">テンプレ</button>
+        <button onclick="analyzeTJA()">解析</button>
+    </div>
+</header>
+
+<div class="container">
+
+    <aside class="sidebar" id="sidebarArea">
+        <h2>譜面情報</h2>
+
+        <div class="info-box">
+            <label>タイトル</label>
+            <input id="titleInput" placeholder="曲名" oninput="syncSidebarToText()">
+        </div>
+
+        <div class="info-box">
+            <label>BPM</label>
+            <input id="bpmInput" type="number" value="120" oninput="syncSidebarToText()">
+        </div>
+
+        <div class="info-box">
+            <label>難易度</label>
+            <select id="courseSelect" onchange="syncSidebarToText()">
+                <option value="Easy">かんたん</option>
+                <option value="Normal">ふつう</option>
+                <option value="Hard">むずかしい</option>
+                <option value="Oni" selected>おに</option>
+                <option value="Edit">エディット</option>
+            </select>
+        </div>
+
+        <div class="info-box">
+            <label>小節数</label>
+            <div id="measureCount">0</div>
+        </div>
+
+        <div class="info-box">
+            <label>ノーツ数</label>
+            <div id="noteCount">0</div>
+        </div>
+    </aside>
+
+    <section class="editor-area">
+
+        <div class="top-tabs">
+            <div class="tab active" onclick="switchTab('edit')">譜面編集</div>
+            <div class="tab" onclick="switchTab('preview')">プレビュー専用</div>
+            <div class="tab" onclick="switchTab('help')">使い方</div>
+        </div>
+
+        <div class="main-editor">
+            <!-- 編集・プレビュータブ -->
+            <div id="editTabContent" class="tab-content">
+                <textarea id="editor" spellcheck="false">TITLE:Sample Song
+BPM:120
+WAVE:sample.ogg
+OFFSET:0
+
+COURSE:Oni
+LEVEL:10
+
+#START
+1111,
+2222,
+1212,
+12341234,
+50000000,
+#END</textarea>
+
+                <div class="preview" id="sidePreview">
+                    <h3>簡易プレビュー</h3>
+                    <div class="preview-scroll" id="previewLinesSide"></div>
+                </div>
+            </div>
+
+            <!-- 使い方タブ (初期状態は非表示) -->
+            <div id="helpTabContent" class="help-area" style="display: none;">
+                <div class="help-container">
+                    <h2>TJA Editor の使い方</h2>
+                    
+                    <div class="help-section">
+                        <h3>基本操作</h3>
+                        <p>左側の<strong>「譜面情報」</strong>パネル、または中央の<strong>エディタ</strong>で直接文字を打ち換えることで、タイトルやBPMなどの基本設定を同期・編集できます。</p>
+                        <p>右下の丸いボタンを使うと、エディタの現在のカーソル位置に素早くノーツを挿入できます。</p>
+                    </div>
+
+                    <div class="help-section">
+                        <h3>ノーツ(数字)の対応表</h3>
+                        <table class="help-table">
+                            <thead>
+                                <tr>
+                                    <th>数字</th>
+                                    <th>種類</th>
+                                    <th>プレビュー表示</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><strong>0</strong></td><td>空白（お休み）</td><td>空間を空けます</td></tr>
+                                <tr><td><strong>1</strong></td><td>ドン（小）</td><td>🔴 赤色の小丸</td></tr>
+                                <tr><td><strong>2</strong></td><td>カツ（小）</td><td>🔵 青色の小丸</td></tr>
+                                <tr><td><strong>3</strong></td><td>ドン（大）</td><td>🔴 赤色の大丸</td></tr>
+                                <tr><td><strong>4</strong></td><td>カツ（大）</td><td>🔵 青色の大丸</td></tr>
+                                <tr><td><strong>5</strong></td><td>連打（開始）</td><td>🟡 黄色の帯状</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="help-section">
+                        <h3>構文のルール</h3>
+                        <p>・<strong>#START と #END</strong>: 譜面のノーツデータはこの2つのコマンドの間に記述してください。</p>
+                        <p>・<strong>カンマ ( , )</strong>: 小節の区切りを意味します。カンマを入れるとプレビュー上で次の小節に切り替わります。</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </section>
+
+</div>
+
+<div class="statusbar">
+    <div class="status-left">
+        <div>行数: <span id="lineCount">0</span></div>
+        <div class="badge">Web Only | No Install</div>
+    </div>
+    <div class="credit">Made by sk</div>
+</div>
+
+<div class="floating-tools" id="floatingTools">
+    <div class="floating-tools-inner">
+        <button onclick="insertText('1')" title="ドン">🔴</button>
+        <button onclick="insertText('2')" title="カツ">🔵</button>
+        <button onclick="insertText('5')" title="連打">🟡</button>
+        <button onclick="insertText(',\n')" title="小節区切り（改行）">➕</button>
+    </div>
+    <button onclick="toggleTools()" class="toggle-btn" id="toolsToggleBtn" title="ツールを開閉">閉</button>
+</div>
+
+<input type="file" id="fileInput" hidden accept=".tja,.txt" />
+
+<script>
+const editor = document.getElementById("editor");
+const lineCount = document.getElementById("lineCount");
+const noteCount = document.getElementById("noteCount");
+const measureCount = document.getElementById("measureCount");
+
+const titleInput = document.getElementById("titleInput");
+const bpmInput = document.getElementById("bpmInput");
+const courseSelect = document.getElementById("courseSelect");
+
+const previewLinesSide = document.getElementById("previewLinesSide");
+
+let currentTab = 'edit';
+
+function updateStats(){
+    const text = editor.value;
+
+    lineCount.textContent = text.split("\n").length;
+
+    const notes = (text.match(/[1-5]/g) || []).length;
+    noteCount.textContent = notes;
+
+    const measures = (text.match(/,/g) || []).length;
+    measureCount.textContent = measures;
+
+    syncTextToSidebar();
+    renderPreview();
+}
+
+function syncTextToSidebar() {
+    const text = editor.value;
+    
+    const titleMatch = text.match(/^TITLE:\s*(.*)$/m);
+    if(titleMatch && document.activeElement !== titleInput) titleInput.value = titleMatch[1];
+
+    const bpmMatch = text.match(/^BPM:\s*([\d.]+)/m);
+    if(bpmMatch && document.activeElement !== bpmInput) bpmInput.value = bpmMatch[1];
+
+    const courseMatch = text.match(/^COURSE:\s*(.*)$/m);
+    if(courseMatch) {
+        const course = courseMatch[1].trim();
+        for(let option of courseSelect.options) {
+            if(option.value.toLowerCase() === course.toLowerCase() || option.text === course) {
+                courseSelect.value = option.value;
+                break;
+            }
+        }
+    }
+}
+
+function syncSidebarToText() {
+    let text = editor.value;
+
+    if(text.match(/^TITLE:/m)) {
+        text = text.replace(/^TITLE:.*$/m, `TITLE:${titleInput.value}`);
+    } else {
+        text = `TITLE:${titleInput.value}\n` + text;
+    }
+
+    if(text.match(/^BPM:/m)) {
+        text = text.replace(/^BPM:.*$/m, `BPM:${bpmInput.value}`);
+    } else {
+        text = `BPM:${bpmInput.value}\n` + text;
+    }
+
+    if(text.match(/^COURSE:/m)) {
+        text = text.replace(/^COURSE:.*$/m, `COURSE:${courseSelect.value}`);
+    } else {
+        text = text.replace("#START", `COURSE:${courseSelect.value}\n\n#START`);
+    }
+
+    editor.value = text;
+    renderPreview();
+}
+
+function renderPreview() {
+    const text = editor.value;
+    
+    const startIdx = text.indexOf("#START");
+    const endIdx = text.indexOf("#END");
+    
+    if(startIdx === -1) {
+        previewLinesSide.innerHTML = "<p style='color:#94a3b8; font-size:13px;'>#START が見つかりません</p>";
+        return;
+    }
+
+    const chartText = endIdx !== -1 ? text.substring(startIdx + 6, endIdx) : text.substring(startIdx + 6);
+    const cleanLines = chartText.replace(/#.*$/gm, "").replace(/\s+/g, "");
+    const measures = cleanLines.split(",").filter((m, idx, arr) => {
+        return !(idx === arr.length - 1 && m === "");
+    });
+
+    let htmlContent = "";
+
+    measures.forEach((measure, index) => {
+        let notesHtml = "";
+        const chars = measure.split("");
+        const totalChars = chars.length;
+
+        chars.forEach((char, cIdx) => {
+            if(char !== "0") {
+                let noteClass = "";
+                if(char === "1") noteClass = "red";
+                else if(char === "2") noteClass = "blue";
+                else if(char === "3") noteClass = "red-large";
+                else if(char === "4") noteClass = "blue-large";
+                else if(char === "5") noteClass = "yellow";
+
+                if(noteClass) {
+                    const leftPos = (cIdx / totalChars) * 90 + 5; 
+                    notesHtml += `<div class="note ${noteClass}" style="left:${leftPos}%"></div>`;
+                }
+            }
+        });
+
+        htmlContent += `
+            <div class="measure-row">
+                <div class="measure-num">第 ${index + 1} 小節</div>
+                <div class="note-line">
+                    ${notesHtml || '<span style="color:#94a3b8; font-size:12px; margin-left:12px;">（空）</span>'}
+                </div>
+            </div>
+        `;
+    });
+
+    previewLinesSide.innerHTML = htmlContent || "<p style='color:#94a3b8; font-size:13px;'>ノーツがありません</p>";
+}
+
+function switchTab(tabName) {
+    currentTab = tabName;
+    const tabs = document.querySelectorAll('.tab');
+    tabs[0].classList.toggle('active', tabName === 'edit');
+    tabs[1].classList.toggle('active', tabName === 'preview');
+    tabs[2].classList.toggle('active', tabName === 'help');
+
+    const editTabContent = document.getElementById('editTabContent');
+    const helpTabContent = document.getElementById('helpTabContent');
+    const sidePreview = document.getElementById('sidePreview');
+    const sidebar = document.getElementById('sidebarArea');
+    const floatingTools = document.getElementById('floatingTools');
+
+    if(tabName === 'preview') {
+        editTabContent.style.display = 'flex';
+        helpTabContent.style.display = 'none';
+        editor.style.display = 'none';
+        sidePreview.style.display = 'block';
+        sidePreview.style.width = '100%';
+        sidebar.style.display = 'none';
+        floatingTools.style.display = 'none';
+    } else if(tabName === 'help') {
+        editTabContent.style.display = 'none';
+        helpTabContent.style.display = 'block';
+        sidebar.style.display = 'none';
+        floatingTools.style.display = 'none';
+    } else {
+        editTabContent.style.display = 'flex';
+        helpTabContent.style.display = 'none';
+        editor.style.display = 'block';
+        sidePreview.style.display = '';
+        sidePreview.style.width = '';
+        floatingTools.style.display = 'flex';
+        if(window.innerWidth > 1024) {
+            sidebar.style.display = 'block';
+        }
+    }
+}
+
+function toggleTools() {
+    const tools = document.getElementById('floatingTools');
+    const btn = document.getElementById('toolsToggleBtn');
+    
+    if(tools.classList.contains('collapsed')) {
+        tools.classList.remove('collapsed');
+        btn.textContent = '閉';
+    } else {
+        tools.classList.add('collapsed');
+        btn.textContent = '開';
+    }
+}
+
+window.addEventListener('resize', () => {
+    if(currentTab === 'edit') {
+        const sidebar = document.getElementById('sidebarArea');
+        if(window.innerWidth > 1024) {
+            sidebar.style.display = 'block';
+        } else {
+            sidebar.style.display = 'none';
+        }
+    }
+});
+
+editor.addEventListener("input", updateStats);
+updateStats();
+
+function insertText(txt){
+    const start = editor.selectionStart;
+    const end = editor.selectionEnd;
+
+    editor.value =
+        editor.value.substring(0, start)
+        + txt +
+        editor.value.substring(end);
+
+    editor.focus();
+    editor.selectionStart = editor.selectionEnd = start + txt.length;
+
+    updateStats();
+}
+
+function newFile(){
+    if(confirm("編集中の内容は消去されます。新規作成しますか？")){
+        editor.value = `TITLE:New Song\nBPM:120\nWAVE:sample.ogg\nOFFSET:0\n\nCOURSE:Oni\nLEVEL:10\n\n#START\n,\n#END`;
+        updateStats();
+    }
+}
+
+function saveFile(){
+    const blob = new Blob([editor.value], {type:"text/plain"});
+    const a = document.createElement("a");
+    
+    const titleMatch = editor.value.match(/^TITLE:\s*(.*)$/m);
+    const fileName = titleMatch ? `${titleMatch[1].trim()}.tja` : "chart.tja";
+
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName;
+    a.click();
+}
+
+function openFile(){
+    document.getElementById("fileInput").click();
+}
+
+document.getElementById("fileInput").addEventListener("change", (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event)=>{
+        editor.value = event.target.result;
+        updateStats();
+    };
+    reader.readAsText(file);
+});
+
+function insertTemplate(){
+    const template = `\n#MEASURE 4/4\n1111,\n2222,\n1122,\n1212,\n`;
+    insertText(template);
+}
+
+function analyzeTJA(){
+    const text = editor.value;
+    let warnings = [];
+
+    if(!text.includes("#START")){
+        warnings.push("⚠ #START がない…");
+    }
+    if(!text.includes("#END")){
+        warnings.push("⚠ #END がない…");
+    }
+    if(!text.includes("BPM:")){
+        warnings.push("⚠ BPM が設定されていまふぇん");
+    }
+    if(!text.includes("TITLE:")){
+        warnings.push("⚠ TITLE が設定されていまふぇん");
+    }
+
+    if(warnings.length === 0){
+        alert("解析完了！基本構文に問題ありません！！");
+    }else{
+        alert(warnings.join("\n"));
+    }
+}
+</script>
+
+</body>
+</html>
